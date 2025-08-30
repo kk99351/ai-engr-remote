@@ -28,28 +28,23 @@ from .serializers import (
 @api_view(['POST'])
 @permission_classes([AllowAny])
 def register_user(request):
-    """Register a new user and send OTP for email verification"""
     serializer = UserRegistrationSerializer(data=request.data)
     
     if serializer.is_valid():
         email = serializer.validated_data['email']
         password = serializer.validated_data['password']
         
-        # Create user but don't activate yet
         user = User.objects.create_user(
-            username=email,  # Use email as username
+            username=email,
             email=email,
             password=password,
-            is_active=False  # User inactive until email verification
+            is_active=False
         )
         
-        # Create user profile
         UserProfile.objects.create(user=user)
         
-        # Generate and send OTP
         otp = OTP.objects.create(email=email)
         
-        # Send OTP email
         try:
             send_mail(
                 subject='Email Verification OTP',
@@ -58,16 +53,15 @@ def register_user(request):
                 recipient_list=[email],
                 fail_silently=False,
             )
-            print(f"OTP sent to {email}: {otp.otp_code}")  # For development
+            print(f"OTP sent to {email}: {otp.otp_code}")
         except Exception as e:
             print(f"Email sending failed: {e}")
-            # In development, we'll continue anyway
             pass
         
         return Response({
             'message': 'Registration successful. OTP sent to your email for verification.',
             'email': email,
-            'otp_code': otp.otp_code  # Remove in production
+            'otp_code': otp.otp_code
         }, status=status.HTTP_201_CREATED)
     
     return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
@@ -82,7 +76,6 @@ def register_user(request):
 @api_view(['POST'])
 @permission_classes([AllowAny])
 def verify_registration(request):
-    """Verify the OTP sent during registration"""
     serializer = OTPVerificationSerializer(data=request.data)
     
     if serializer.is_valid():
@@ -90,7 +83,6 @@ def verify_registration(request):
         otp_code = serializer.validated_data['otp_code']
         
         try:
-            # Find valid OTP
             otp = OTP.objects.filter(
                 email=email,
                 otp_code=otp_code,
@@ -102,16 +94,13 @@ def verify_registration(request):
                     'error': 'OTP has expired. Please register again.'
                 }, status=status.HTTP_400_BAD_REQUEST)
             
-            # Verify OTP
             otp.is_verified = True
             otp.save()
             
-            # Activate user account
             user = User.objects.get(email=email)
             user.is_active = True
             user.save()
             
-            # Mark profile as email verified
             profile = user.profile
             profile.email_verified = True
             profile.save()
@@ -142,7 +131,6 @@ def verify_registration(request):
 @api_view(['POST'])
 @permission_classes([AllowAny])
 def login_user(request):
-    """Login user and set auth_token in HTTP-only cookie"""
     serializer = UserLoginSerializer(data=request.data)
     
     if serializer.is_valid():
@@ -156,7 +144,6 @@ def login_user(request):
                     'error': 'Account not verified. Please verify your email first.'
                 }, status=status.HTTP_400_BAD_REQUEST)
             
-            # Authenticate using username (which is email)
             authenticated_user = authenticate(request, username=email, password=password)
             
             if authenticated_user:
@@ -171,13 +158,12 @@ def login_user(request):
                     }
                 }, status=status.HTTP_200_OK)
                 
-                # Set auth_token cookie (using sessionid as the token)
                 response.set_cookie(
                     'auth_token',
                     request.session.session_key,
-                    max_age=3600,  # 1 hour
+                    max_age=3600,
                     httponly=True,
-                    secure=False,  # Set to True in production with HTTPS
+                    secure=False,
                     samesite='Lax'
                 )
                 
@@ -202,7 +188,6 @@ def login_user(request):
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
 def get_user_details(request):
-    """Get details of the logged-in user"""
     serializer = UserDetailSerializer(request.user)
     return Response(serializer.data, status=status.HTTP_200_OK)
 
@@ -215,14 +200,12 @@ def get_user_details(request):
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
 def logout_user(request):
-    """Logout user and clear auth_token cookie"""
     logout(request)
     
     response = Response({
         'message': 'Logout successful'
     }, status=status.HTTP_200_OK)
     
-    # Clear auth_token cookie
     response.delete_cookie('auth_token')
     
     return response
