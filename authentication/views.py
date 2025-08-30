@@ -4,6 +4,7 @@ from django.contrib.auth.models import User
 from django.core.mail import send_mail
 from django.conf import settings
 from django.utils import timezone
+from django.views.decorators.csrf import csrf_exempt
 from rest_framework import status
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import AllowAny, IsAuthenticated
@@ -23,6 +24,7 @@ from .serializers import (
     request=UserRegistrationSerializer,
     responses={201: {"description": "Registration successful, OTP sent to email"}}
 )
+@csrf_exempt
 @api_view(['POST'])
 @permission_classes([AllowAny])
 def register_user(request):
@@ -76,6 +78,7 @@ def register_user(request):
     request=OTPVerificationSerializer,
     responses={200: {"description": "Email verified successfully"}}
 )
+@csrf_exempt
 @api_view(['POST'])
 @permission_classes([AllowAny])
 def verify_registration(request):
@@ -135,6 +138,7 @@ def verify_registration(request):
     request=UserLoginSerializer,
     responses={200: {"description": "Login successful, auth_token cookie set"}}
 )
+@csrf_exempt
 @api_view(['POST'])
 @permission_classes([AllowAny])
 def login_user(request):
@@ -207,6 +211,7 @@ def get_user_details(request):
     description="Logout user and clear auth_token cookie",
     responses={200: {"description": "Logout successful"}}
 )
+@csrf_exempt
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
 def logout_user(request):
